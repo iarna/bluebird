@@ -74,6 +74,7 @@ function Promise(resolver) {
     this._settledValue = void 0;
     //for .bind
     this._boundTo = void 0;
+    this._domain = global.process ? global.process.domain : null;
     if (resolver !== INTERNAL) this._resolveFromResolver(resolver);
 }
 
@@ -1096,7 +1097,17 @@ function Promise$_notifyUnhandledRejection() {
             reason = trace;
         }
         if (typeof CapturedTrace.possiblyUnhandledRejection === "function") {
-            CapturedTrace.possiblyUnhandledRejection(reason, this);
+            if (this._domain) {
+                var result = util.tryCatch2(
+                    CapturedTrace.possiblyUnhandledRejection,
+                    CapturedTrace, reason, this);
+                if (result === errorObj) {
+                    this._domain.emit("error", result.e);
+                }
+            }
+            else {
+                CapturedTrace.possiblyUnhandledRejection(reason, this);
+            }
         }
     }
 };
